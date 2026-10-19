@@ -1,0 +1,55 @@
+<!-- Minimal Page KV poll — drop into any single-file HTML page.
+     1. python3 scripts/hp.py kv enable <fileKey>   → save the write token
+     2. Replace __FILEKEY__ / __WRITE_TOKEN__ below, publish with hp.py pages paste. -->
+<div id="poll"></div>
+<script>
+const FILEKEY = "__FILEKEY__";
+const WRITE_TOKEN = "__WRITE_TOKEN__";
+const OPTIONS = ["Cursor", "Claude Code", "GitHub Copilot", "Windsurf"];
+const KEY = "poll_vote_" + FILEKEY;
+
+async function results() {
+  const { items = [] } = await (
+    await fetch(`https://www.htmlput.com/api/v1/pages/${FILEKEY}/kv/public`)
+  ).json();
+  const counts = {};
+  items.forEach((it) => {
+    const o = (it.value || {}).option;
+    if (o) counts[o] = (counts[o] || 0) + 1;
+  });
+  return counts;
+}
+
+async function render() {
+  const counts = await results();
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const mine = localStorage.getItem(KEY);
+  document.getElementById("poll").innerHTML = mine
+    ? OPTIONS.map((o) => {
+        const c = counts[o] || 0;
+        const pct = total ? Math.round((c / total) * 100) : 0;
+        return `<div>${o}: ${c} (${pct}%)</div>`;
+      }).join("") + `<p>${total} votes</p>`
+    : OPTIONS.map((o) => `<button data-o="${o}">${o}</button>`).join("");
+  if (!mine) {
+    document.querySelectorAll("#poll button").forEach((b) => {
+      b.onclick = async () => {
+        await fetch(`https://www.htmlput.com/api/v1/pages/${FILEKEY}/kv`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${WRITE_TOKEN}`,
+          },
+          body: JSON.stringify({
+            key: "vote_" + crypto.randomUUID().slice(0, 8),
+            value: { option: b.dataset.o },
+          }),
+        });
+        localStorage.setItem(KEY, b.dataset.o);
+        render();
+      };
+    });
+  }
+}
+render();
+</script>
