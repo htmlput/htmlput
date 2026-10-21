@@ -2,7 +2,8 @@
 
 An agent skill for [htmlput.com](https://www.htmlput.com) — free static hosting for
 single-file HTML pages and zip sites, plus per-page key-value data (Page KV) that
-gives static pages a shared backend with no server code.
+gives static pages a shared backend with no server code. Optional Page Accounts
+(authorize + private rows) is documented in [SKILL.md](SKILL.md) and OpenAPI.
 
 ## Install
 
@@ -33,8 +34,8 @@ python3 scripts/hp.py kv enable <fileKey> --require-review
 # → save the writeToken it prints, embed it in your page's frontend (see SKILL.md)
 ```
 
-See [SKILL.md](SKILL.md) for CLI commands, Page KV patterns, and quirks.
-HTTP routes are in [reference.md](reference.md).
+See [SKILL.md](SKILL.md) for CLI commands, Page KV / Page Accounts patterns, and quirks.
+HTTP routes are in [reference.md](reference.md). OpenAPI: site `/openapi.json`.
 
 ## Live examples
 

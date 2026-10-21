@@ -1,6 +1,6 @@
 ---
 name: htmlput
-description: Publish single-file HTML pages and zip sites to htmlput.com and manage them, or add server-side per-page data (Page KV) for polls, guestbooks and forms. Use when the user wants to host a web page, share an HTML file through a public link, update or delete a hosted page, or give a static page a shared data backend without writing one.
+description: Publish single-file HTML pages and zip sites to htmlput.com and manage them, or add server-side per-page data (Page KV) for polls, guestbooks and forms, including optional Page Accounts authorize for private per-user rows. Use when the user wants to host a web page, share an HTML file through a public link, update or delete a hosted page, or give a static page a shared data backend without writing one.
 ---
 
 # htmlput
@@ -29,12 +29,12 @@ in chat; if it is missing, send them to step 2.
 ```
 hp.py pages list [--page N] [--page-size N]
 hp.py pages read PAGE_ID
-hp.py pages paste --title TITLE --file index.html [--access public|password --password SECRET]
-hp.py pages update PAGE_ID --title TITLE --file index.html [--access public|password --password SECRET]  # Plus+
+hp.py pages paste --title TITLE --file index.html [--access public|password|claim --password SECRET]
+hp.py pages update PAGE_ID --title TITLE --file index.html [--access public|password|claim --password SECRET]  # Plus+
 hp.py pages delete PAGE_ID                                                            # Plus+
 ```
 
-`--access` is `public` (default) or `password`. `password` requires `--password`.
+`--access` is `public` (default), `password`, or `claim`. `password` requires `--password`. `claim` is one-code-per-person access (visitors redeem `cl_…` on `/p/…`); no password.
 
 `paste` returns JSON containing `data.shareUrl` and `data.pageId`.
 Always open `shareUrl` and confirm it renders before telling the user it is live.
@@ -42,7 +42,7 @@ Always open `shareUrl` and confirm it renders before telling the user it is live
 ### Zip sites (bundles)
 
 ```
-hp.py bundle upload --title TITLE --zip site.zip [--access public|password --password SECRET]  # Pro+
+hp.py bundle upload --title TITLE --zip site.zip [--access public|password|claim --password SECRET]  # Pro+
 hp.py bundle reupload PAGE_ID --zip site.zip --title TITLE                  # Pro+, in-place
 ```
 
@@ -90,6 +90,34 @@ Conventions that keep demos working:
   (Free 100, Plus 1,000, Pro 10,000, Ultra 100,000). One value ≤ 10 KB.
   Deleting a key does not free quota.
 
+### Page Accounts (authorize + private rows)
+
+Optional. Turn on in the owner's Data dialog (**Require authorize**) or via settings
+schema `login: { enabled: true, defaultVisibility: "private", maxEntriesPerUser: 500 }`.
+
+Visitor flow on the hosted page (same `fileKey` only — no cross-page private reads):
+
+1. On load: `POST …/auth/silent` with `credentials: "include"`. If the user already
+   authorized this page, you get `{ token: "hp_pst_…", user: { id, name } }`.
+2. Otherwise show an Authorize button → same-tab navigate to
+   `https://www.htmlput.com/auth/page?fileKey=…&return=…&state=…`.
+   Unauthenticated users hit login first; return uses `autoGrant=1` so they are not
+   asked to click Authorize again. Success redirects to `return` with `#hp_code=`
+   (clear with `history.replaceState` after reading).
+3. `POST …/auth/exchange` with `{ code }` → page session token.
+4. Writes while authorize is on: `POST …/kv` with `Authorization: Bearer hp_pst_…`
+   (optional `visibility: "public"` for walls/leaderboards, or `"private"` for
+   personal rows). `GET …/kv/mine` lists the caller's rows. Use `user.name` in
+   forms if you want; API does not force it.
+
+When `login.enabled` is true, anonymous `writeToken` (`hp_pwt_…`) POSTs are
+rejected (`KV_ANON_WRITE_DISABLED` + `message`). Turn authorize off to allow
+write-token again. Never put the Agent API key (`hp_live_…`) in page HTML.
+
+Browser helpers and OpenAPI: History → Data → Wire snippet; OpenAPI at
+`/openapi.json` (tag **Page accounts**). Paths/errors also in [reference.md](reference.md).
+Example stub: [examples/authorize-mine-snippet.html](examples/authorize-mine-snippet.html).
+
 Raw HTTP routes, bodies, and the required `User-Agent` are in [reference.md](reference.md).
 
 ## Quirks
@@ -100,6 +128,11 @@ Raw HTTP routes, bodies, and the required `User-Agent` are in [reference.md](ref
   `files`+`relpaths` is folder-mode only and returns 400 with a zip.
 - `requireReview` must sit inside `schema` together with `fields`
   (`{"schema":{"requireReview":true,"fields":[]}}`); other shapes return 400.
+- `login` lives inside the same `schema` object (default off). Enabling authorize
+  **disables** anonymous write-token POSTs (`KV_ANON_WRITE_DISABLED`); use page
+  session writes instead (see Data → Wire snippet).
+- Private rows are invisible to `kv public` and to owner list `value` (owners see
+  `privateRowCount` only).
 - Plan limits: paste/list/read on Free; edit/delete need Plus; zip bundles need
   Pro. A 403 `API_PLAN_REQUIRED` means the account's plan is too low.
 - There is no API signup: new users register at https://www.htmlput.com first.

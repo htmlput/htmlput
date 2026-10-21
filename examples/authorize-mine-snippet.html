@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Page Accounts stub — authorize + mine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body>
+  <p>Replace <code>FILEKEY</code>. Turn on Data → Require authorize for this page.</p>
+  <button type="button" id="auth">Authorize</button>
+  <button type="button" id="save" disabled>Save private note</button>
+  <pre id="out"></pre>
+  <script>
+    const fileKey = "FILEKEY";
+    const API = "https://www.htmlput.com/api/v1/pages/" + fileKey;
+    let pageToken = null;
+
+    async function silent() {
+      const res = await fetch(API + "/auth/silent", {
+        method: "POST",
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) return null;
+      pageToken = body.token;
+      document.getElementById("out").textContent =
+        "silent ok: " + JSON.stringify(body.user);
+      document.getElementById("save").disabled = false;
+      return body;
+    }
+
+    async function exchange(code) {
+      const res = await fetch(API + "/auth/exchange", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.code || res.status);
+      pageToken = body.token;
+      document.getElementById("out").textContent =
+        "authorized: " + JSON.stringify(body.user);
+      document.getElementById("save").disabled = false;
+      return body;
+    }
+
+    function authorize() {
+      const state = crypto.randomUUID();
+      const returnUrl = location.href.split("#")[0];
+      const url =
+        "https://www.htmlput.com/auth/page?fileKey=" +
+        encodeURIComponent(fileKey) +
+        "&return=" +
+        encodeURIComponent(returnUrl) +
+        "&state=" +
+        encodeURIComponent(state);
+      location.assign(url);
+    }
+
+    async function mine() {
+      const res = await fetch(API + "/kv/mine", {
+        headers: { Authorization: "Bearer " + pageToken },
+      });
+      return (await res.json()).items || [];
+    }
+
+    document.getElementById("auth").onclick = () => void authorize();
+    document.getElementById("save").onclick = async () => {
+      await fetch(API + "/kv", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + pageToken,
+        },
+        body: JSON.stringify({
+          key: "note",
+          value: { text: "hi " + new Date().toISOString() },
+          visibility: "private",
+        }),
+      });
+      document.getElementById("out").textContent = JSON.stringify(
+        await mine(),
+        null,
+        2,
+      );
+    };
+
+    (async () => {
+      const m = /(?:^|#|&)hp_code=([^&]+)/.exec(location.hash || "");
+      if (m) {
+        history.replaceState(null, "", location.pathname + location.search);
+        await exchange(decodeURIComponent(m[1]));
+        return;
+      }
+      await silent();
+    })();
+  </script>
+</body>
+</html>

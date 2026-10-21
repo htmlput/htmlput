@@ -6,10 +6,10 @@ Auth: export HP_API_KEY="hp_live_…" (create one at https://www.htmlput.com/acc
 Usage:
     hp.py pages list [--page N] [--page-size N]
     hp.py pages read PAGE_ID
-    hp.py pages paste --title TITLE --file index.html [--access public|password --password SECRET]
-    hp.py pages update PAGE_ID --title TITLE --file index.html [--access public|password --password SECRET]  # Plus+
+    hp.py pages paste --title TITLE --file index.html [--access public|password|claim --password SECRET]
+    hp.py pages update PAGE_ID --title TITLE --file index.html [--access public|password|claim --password SECRET]  # Plus+
     hp.py pages delete PAGE_ID                                                            # Plus+
-    hp.py bundle upload --title TITLE --zip site.zip [--access public|password --password SECRET]  # Pro+
+    hp.py bundle upload --title TITLE --zip site.zip [--access public|password|claim --password SECRET]  # Pro+
     hp.py bundle reupload PAGE_ID --zip site.zip --title TITLE                            # Pro+
     hp.py kv enable FILEKEY [--require-review]
     hp.py kv write FILEKEY --token WRITE_TOKEN --key KEY --value '{"a":1}'
@@ -218,7 +218,12 @@ def main():
     c = psub.add_parser("paste")
     c.add_argument("--title", required=True)
     c.add_argument("--file", required=True)
-    c.add_argument("--access", default="public", choices=["public", "password"])
+    c.add_argument(
+        "--access",
+        default="public",
+        choices=["public", "password", "claim"],
+        help="public | password | claim (one code per person; no --password)",
+    )
     c.add_argument("--password", default=None, help="Required when --access password")
     c.set_defaults(fn=cmd_pages_paste)
     d = psub.add_parser("delete")
@@ -228,7 +233,12 @@ def main():
     u.add_argument("page_id")
     u.add_argument("--title", required=True)
     u.add_argument("--file", required=True)
-    u.add_argument("--access", default="public", choices=["public", "password"])
+    u.add_argument(
+        "--access",
+        default="public",
+        choices=["public", "password", "claim"],
+        help="public | password | claim (one code per person; no --password)",
+    )
     u.add_argument("--password", default=None, help="Required when --access password")
     u.set_defaults(fn=cmd_pages_update)
 
@@ -237,7 +247,12 @@ def main():
     bu = bsub.add_parser("upload")
     bu.add_argument("--title", required=True)
     bu.add_argument("--zip", required=True)
-    bu.add_argument("--access", default="public", choices=["public", "password"])
+    bu.add_argument(
+        "--access",
+        default="public",
+        choices=["public", "password", "claim"],
+        help="public | password | claim (one code per person; no --password)",
+    )
     bu.add_argument("--password", default=None, help="Required when --access password")
     bu.set_defaults(fn=cmd_bundle_upload)
     br = bsub.add_parser("reupload")
