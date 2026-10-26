@@ -15,11 +15,11 @@ Python/Java user agents.
 | DELETE | /api/v1/hosting/pages/{id} | |
 | POST | /api/v1/hosting/pages/bundle | multipart, `mode=zip`, file part named `file`; optional `accessPassword` |
 | PUT | /api/v1/hosting/pages/{id}/bundle | multipart, same as above |
-| PUT | /api/v1/pages/{fileKey}/kv/settings | `{"enabled":true}` → returns `writeToken`; review: `{"enabled":true,"schema":{"requireReview":true,"fields":[]}}`; authorize: add `"login":{"enabled":true}` inside `schema` |
-| GET | /api/v1/pages/{fileKey}/kv | owner list; query `cursor`, `limit` (max 100). Response `nextCursor`, `privateRowCount` (private values omitted) |
-| GET | /api/v1/pages/{fileKey}/kv/public | visitor read, approved **public** rows only, no auth |
+| PUT | /api/v1/pages/{fileKey}/kv/settings | `{"enabled":true}` → returns `writeToken`; review: `{"enabled":true,"schema":{"requireReview":true,"fields":[{…, guestVisible}]}}`; authorize: `"login":{"enabled":true}` inside `schema`. Field `guestVisible` controls `/kv/public` projection on **public** rows |
+| GET | /api/v1/pages/{fileKey}/kv | owner list; query `cursor`, `limit` (max 100). Includes **private rows with full values**; `privateRowCount` |
+| GET | /api/v1/pages/{fileKey}/kv/public | visitor read, approved **public** rows only; values projected to `guestVisible` fields (full object if no field schema) |
 | GET | /api/v1/pages/{fileKey}/kv/mine | page session `hp_pst_…`; caller's rows only |
-| POST | /api/v1/pages/{fileKey}/kv | writeToken (anonymous; **blocked** when `login.enabled` → `KV_ANON_WRITE_DISABLED`) **or** `hp_pst_…` (owner rows; optional `visibility`) **or** owner `hp_live_…` |
+| POST | /api/v1/pages/{fileKey}/kv | writeToken (anonymous; optional `visibility` `public`\|`private`; **blocked** when `login.enabled` → `KV_ANON_WRITE_DISABLED`) **or** `hp_pst_…` (owner rows; optional `visibility`) **or** owner `hp_live_…` |
 | DELETE | /api/v1/pages/{fileKey}/kv/{key} | page session (own row) or owner |
 | POST | /api/v1/pages/{fileKey}/kv/{key}/review | `{"status":"approved"\|"rejected"}` |
 | POST | /api/v1/pages/{fileKey}/kv/rotate-token | new write token |
@@ -35,6 +35,6 @@ Python/Java user agents.
 
 Browser authorize UI (not JSON): `GET /auth/page?fileKey&return&state` (same-tab). Unauthenticated → `/login?next=…&autoGrant=1`; success → `#hp_code=` on `return`. Legacy `mode=popup` still served if requested.
 
-Useful `code`s: `KV_DISABLED`, `KV_ANON_WRITE_DISABLED` (write-token while `login.enabled`; response includes `message`), `KV_LOGIN_REQUIRED`, `KV_LOGIN_DISABLED`, `KV_SESSION_EXPIRED`, `KV_NOT_OWNER`, `KV_USER_LIMIT`, `KV_USER_BANNED`, `AUTH_CODE_INVALID`, `AUTH_SILENT_DENIED`, `USE_KV_PUBLIC`.
+Useful `code`s: `KV_DISABLED`, `KV_ANON_WRITE_DISABLED` (write-token while `login.enabled` on `POST …/kv`; response includes `message`), `KV_LOGIN_REQUIRED`, `KV_LOGIN_DISABLED`, `KV_SESSION_EXPIRED`, `KV_NOT_OWNER`, `KV_USER_LIMIT`, `KV_USER_BANNED`, `AUTH_CODE_INVALID`, `AUTH_SILENT_DENIED`, `USE_KV_PUBLIC`.
 
-Key quota is an account lifetime cap shared by every page (Free 100, Plus 1,000, Pro 10,000, Ultra 100,000). One value ≤ 10 KB.
+Data replies quota is an account lifetime cap for **every new key** (public or private) (Free 100, Plus 1,000, Pro 10,000, Ultra 100,000). Soft-delete does not free. One value ≤ 10 KB.

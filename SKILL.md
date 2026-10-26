@@ -86,9 +86,96 @@ Conventions that keep demos working:
 - One row per submission: `key` = prefix + random id (e.g. `vote_`, `msg_`, `sub_`).
 - With `--require-review`, new rows are `pending` and invisible to `kv public`
   until approved via `kv review`. Use it for guestbooks / comment walls.
-- Key quota is lifetime for the whole account, shared across pages
-  (Free 100, Plus 1,000, Pro 10,000, Ultra 100,000). One value ≤ 10 KB.
-  Deleting a key does not free quota.
+- Key quota (public + private rows) is lifetime for the whole account, shared
+  across pages (Free 100, Plus 1,000, Pro 10,000, Ultra 100,000). One value ≤
+  10 KB. Deleting a key does not free quota. **Every new key** (public or
+  private) counts as one Data replies unit.
+
+### Two visibility layers (do not conflate)
+
+Page data has **two** independent controls:
+
+1. **Row** `visibility`: `"public"` (default) \| `"private"`.
+   - `public` → eligible for `GET …/kv/public` (if Shown / approved).
+   - `private` → **never** on `/kv/public`; owner Data shows **Private** /
+     **非公开**. Anonymous private rows keep `owner_user_id = null`.
+2. **Field** `guestVisible` (schema `fields[]`): on a **public** row, which
+   keys appear in the public projection. `guestVisible: false` → owner still
+   sees the field in Data (column marked Private / 非公开); visitors’ 
+   `/kv/public` omits it. DIY pages with **no** field schema expose the full
+   value object on public read.
+
+**Prefer field-level for mixed forms** (personality quiz, check-in): one
+`visibility: "public"` row; nick / result / matchScore → `guestVisible: true`;
+phone / answers → `false`. Matching that needs secret answers should be
+computed by the creator (or their backend) and only public fields written back.
+
+```js
+// settings (owner): schema with guestVisible mix
+await fetch(`https://www.htmlput.com/api/v1/pages/${FILEKEY}/kv/settings`, {
+  method: "PUT",
+  headers: {"Content-Type": "application/json", "Authorization": `Bearer ${API_KEY}`},
+  body: JSON.stringify({
+    enabled: true,
+    schema: {
+      requireReview: false,
+      fields: [
+        { id: "nick", type: "text", label: "Nick", guestVisible: true },
+        { id: "phone", type: "text", label: "Phone", guestVisible: false },
+        { id: "result", type: "text", label: "Result", guestVisible: true },
+      ],
+    },
+  }),
+});
+// guest write: public row, mixed fields in value
+await fetch(`https://www.htmlput.com/api/v1/pages/${FILEKEY}/kv`, {
+  method: "POST",
+  headers: {"Content-Type": "application/json", "Authorization": `Bearer ${WRITE_TOKEN}`},
+  body: JSON.stringify({
+    key: "card_" + crypto.randomUUID().slice(0, 8),
+    visibility: "public",
+    value: { nick: "Ada", phone: "…", result: "INTJ" },
+  }),
+});
+```
+
+### Whole-row private (`visibility: "private"`)
+
+Use when the **entire** submission must stay off the public list (one-way
+quotes, medical leads, internal feedback with no public wall). Same `POST …/kv`;
+pass `visibility: "private"`. Owner reads full value in History → Data.
+
+```
+hp.py kv write FILEKEY --token WRITE_TOKEN --key lead_abc --value '{"phone":"…"}' --visibility private
+```
+
+Browser (write-token; **Require authorize must be off** — otherwise
+`KV_ANON_WRITE_DISABLED`; use page session instead):
+
+```js
+await fetch(`https://www.htmlput.com/api/v1/pages/${FILEKEY}/kv`, {
+  method: "POST",
+  headers: {"Content-Type": "application/json", "Authorization": `Bearer ${WRITE_TOKEN}`},
+  body: JSON.stringify({
+    key: "lead_" + crypto.randomUUID().slice(0,8),
+    value: { phone: "…" },
+    visibility: "private",
+  })
+});
+```
+
+**Which approach to use**
+
+| Need | Write | Read |
+|------|-------|------|
+| Mixed card (nick public, phone/answers hidden) | `POST …/kv` **public** row + schema `guestVisible` | `/kv/public` (projected); owner Data (full) |
+| Poll / guestbook / leaderboard | `POST …/kv` public (omit visibility) | `GET …/kv/public` |
+| Entire lead off the wall | `POST …/kv` + `visibility: "private"` | Owner Data / `GET …/kv` only |
+| Per-user progress / wrong-answer book | `visibility: "private"` + page session when authorize on | `GET …/kv/mine`; owner `GET …/kv` |
+
+Multi-submit vs overwrite is the Creator’s **key** strategy; the platform does
+not add business rules. Require authorize stays Creator choice (UI or
+`PUT …/kv/settings` + `schema.login`).
 
 ### Page Accounts (authorize + private rows)
 
@@ -131,8 +218,12 @@ Raw HTTP routes, bodies, and the required `User-Agent` are in [reference.md](ref
 - `login` lives inside the same `schema` object (default off). Enabling authorize
   **disables** anonymous write-token POSTs (`KV_ANON_WRITE_DISABLED`); use page
   session writes instead (see Data → Wire snippet).
-- Private rows are invisible to `kv public` and to owner list `value` (owners see
-  `privateRowCount` only).
+- Private **rows** are invisible to `kv public` and to other visitors' `kv/mine`.
+  **Page owners** see private `value` on owner `GET …/kv` / `GET …/kv/{key}`
+  (tutoring). `privateRowCount` is still returned as a count helper.
+  Anonymous private rows (write-token) have `owner_user_id = null`.
+- Field `guestVisible: false` only hides keys on `/kv/public` for **public**
+  rows; it is not the same as row `visibility: "private"`.
 - Plan limits: paste/list/read on Free; edit/delete need Plus; zip bundles need
   Pro. A 403 `API_PLAN_REQUIRED` means the account's plan is too low.
 - There is no API signup: new users register at https://www.htmlput.com first.

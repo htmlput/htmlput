@@ -12,7 +12,7 @@ Usage:
     hp.py bundle upload --title TITLE --zip site.zip [--access public|password|claim --password SECRET]  # Pro+
     hp.py bundle reupload PAGE_ID --zip site.zip --title TITLE                            # Pro+
     hp.py kv enable FILEKEY [--require-review]
-    hp.py kv write FILEKEY --token WRITE_TOKEN --key KEY --value '{"a":1}'
+    hp.py kv write FILEKEY --token WRITE_TOKEN --key KEY --value '{"a":1}' [--visibility public|private]
     hp.py kv list FILEKEY [--cursor CURSOR] [--limit N]
     hp.py kv public FILEKEY
     hp.py kv review FILEKEY --key KEY --status approved|rejected
@@ -170,8 +170,10 @@ def cmd_kv_write(a):
         value = json.loads(a.value)
     except json.JSONDecodeError as e:
         raise SystemExit(f"--value must be valid JSON: {e}")
-    out = request("POST", f"/api/v1/pages/{a.filekey}/kv",
-                  {"key": a.key, "value": value}, token=a.token)
+    body = {"key": a.key, "value": value}
+    if a.visibility:
+        body["visibility"] = a.visibility
+    out = request("POST", f"/api/v1/pages/{a.filekey}/kv", body, token=a.token)
     print(json.dumps(out, indent=2, ensure_ascii=False))
 
 
@@ -272,6 +274,12 @@ def main():
     kw.add_argument("--token", required=True)
     kw.add_argument("--key", required=True)
     kw.add_argument("--value", required=True, help="JSON value, e.g. '{\"option\":\"a\"}'")
+    kw.add_argument(
+        "--visibility",
+        choices=["public", "private"],
+        default=None,
+        help="optional; private = owner-only (not on /kv/public)",
+    )
     kw.set_defaults(fn=cmd_kv_write)
     kl = ksub.add_parser("list")
     kl.add_argument("filekey")
