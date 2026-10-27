@@ -9,6 +9,8 @@ Usage:
     hp.py pages paste --title TITLE --file index.html [--access public|password|claim --password SECRET]
     hp.py pages update PAGE_ID --title TITLE --file index.html [--access public|password|claim --password SECRET]  # Plus+
     hp.py pages delete PAGE_ID                                                            # Plus+
+    hp.py pages claim-credits
+    hp.py pages claim-codes PAGE_ID [--count N] [--batch LABEL] [--channel LABEL]
     hp.py bundle upload --title TITLE --zip site.zip [--access public|password|claim --password SECRET]  # Pro+
     hp.py bundle reupload PAGE_ID --zip site.zip --title TITLE                            # Pro+
     hp.py kv enable FILEKEY [--require-review]
@@ -127,6 +129,27 @@ def cmd_pages_update(a):
     print(json.dumps(out, indent=2, ensure_ascii=False))
 
 
+def cmd_pages_claim_credits(a):
+    print(json.dumps(request("GET", "/api/v1/hosting/claim-codes/credits"),
+                     indent=2, ensure_ascii=False))
+
+
+def cmd_pages_claim_codes(a):
+    body = {"count": a.count}
+    if a.batch:
+        body["batch"] = a.batch
+    if a.channel:
+        body["channel"] = a.channel
+    out = request("POST", f"/api/v1/hosting/pages/{a.page_id}/claim-codes", body)
+    print(json.dumps(out, indent=2, ensure_ascii=False))
+    codes = (out.get("data") or {}).get("codes") or []
+    if codes:
+        print(
+            "\n>>> SAVE THESE claim codes — plaintext is only returned here.",
+            file=sys.stderr,
+        )
+
+
 # ---- bundles ----
 
 def cmd_bundle_upload(a):
@@ -243,6 +266,17 @@ def main():
     )
     u.add_argument("--password", default=None, help="Required when --access password")
     u.set_defaults(fn=cmd_pages_update)
+    cc = psub.add_parser("claim-credits", help="How many cl_… claim codes you can still mint")
+    cc.set_defaults(fn=cmd_pages_claim_credits)
+    cm = psub.add_parser(
+        "claim-codes",
+        help="Mint claim codes for a page (accessType must be claim)",
+    )
+    cm.add_argument("page_id")
+    cm.add_argument("--count", type=int, default=1)
+    cm.add_argument("--batch", default=None)
+    cm.add_argument("--channel", default=None)
+    cm.set_defaults(fn=cmd_pages_claim_codes)
 
     bp = sub.add_parser("bundle")
     bsub = bp.add_subparsers(dest="op", required=True)

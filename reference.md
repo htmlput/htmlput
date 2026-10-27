@@ -15,6 +15,8 @@ Python/Java user agents.
 | DELETE | /api/v1/hosting/pages/{id} | |
 | POST | /api/v1/hosting/pages/bundle | multipart, `mode=zip`, file part named `file`; optional `accessPassword` |
 | PUT | /api/v1/hosting/pages/{id}/bundle | multipart, same as above |
+| GET | /api/v1/hosting/claim-codes/credits | `{ data.canCreate, … }` — how many `cl_…` codes you can still mint |
+| POST | /api/v1/hosting/pages/{id}/claim-codes | `{ count?, batch?, channel? }` → `{ data.codes:[{ code: "cl_…" }] }` (page must be `accessType: claim`; plaintext only here) |
 | PUT | /api/v1/pages/{fileKey}/kv/settings | `{"enabled":true}` → returns `writeToken`; review: `{"enabled":true,"schema":{"requireReview":true,"fields":[{…, guestVisible}]}}`; authorize: `"login":{"enabled":true}` inside `schema`. Field `guestVisible` controls `/kv/public` projection on **public** rows |
 | GET | /api/v1/pages/{fileKey}/kv | owner list; query `cursor`, `limit` (max 100). Includes **private rows with full values**; `privateRowCount` |
 | GET | /api/v1/pages/{fileKey}/kv/public | visitor read, approved **public** rows only; values projected to `guestVisible` fields (full object if no field schema) |

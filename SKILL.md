@@ -32,9 +32,13 @@ hp.py pages read PAGE_ID
 hp.py pages paste --title TITLE --file index.html [--access public|password|claim --password SECRET]
 hp.py pages update PAGE_ID --title TITLE --file index.html [--access public|password|claim --password SECRET]  # Plus+
 hp.py pages delete PAGE_ID                                                            # Plus+
+hp.py pages claim-credits                                                             # how many cl_… codes left
+hp.py pages claim-codes PAGE_ID [--count N] [--batch LABEL] [--channel LABEL]         # mint codes (page must be claim)
 ```
 
 `--access` is `public` (default), `password`, or `claim`. `password` requires `--password`. `claim` is one-code-per-person access (visitors redeem `cl_…` on `/p/…`); no password.
+
+After `paste`/`update` with `--access claim`, mint codes with `claim-codes` (or check `claim-credits` first). Save the returned `cl_…` strings — they are shown only once. Visitors redeem on the share URL.
 
 `paste` returns JSON containing `data.shareUrl` and `data.pageId`.
 Always open `shareUrl` and confirm it renders before telling the user it is live.
