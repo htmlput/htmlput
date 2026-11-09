@@ -39,4 +39,4 @@ Browser authorize UI (not JSON): `GET /auth/page?fileKey&return&state` (same-tab
 
 Useful `code`s: `KV_DISABLED`, `KV_ANON_WRITE_DISABLED` (write-token while `login.enabled` on `POST …/kv`; response includes `message`), `KV_LOGIN_REQUIRED`, `KV_LOGIN_DISABLED`, `KV_SESSION_EXPIRED`, `KV_NOT_OWNER`, `KV_USER_LIMIT`, `KV_USER_BANNED`, `AUTH_CODE_INVALID`, `AUTH_SILENT_DENIED`, `USE_KV_PUBLIC`.
 
-Data replies quota is an account lifetime cap for **every new key** (public or private) (Free 100, Plus 1,000, Pro 10,000, Ultra 100,000). Soft-delete does not free. One value ≤ 10 KB.
+Data replies quota is an account lifetime cap for **every new key** (public or private) (Free 100, Plus 10,000, Pro 100,000, Ultra 1,000,000). Soft-delete does not free. One value is plan-tiered (Free 10KB · Plus 32KB · Pro 64KB · Ultra 128KB UTF-8 of `JSON.stringify(value)`).

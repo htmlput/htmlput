@@ -91,9 +91,10 @@ Conventions that keep demos working:
 - With `--require-review`, new rows are `pending` and invisible to `kv public`
   until approved via `kv review`. Use it for guestbooks / comment walls.
 - Key quota (public + private rows) is lifetime for the whole account, shared
-  across pages (Free 100, Plus 1,000, Pro 10,000, Ultra 100,000). One value ≤
-  10 KB. Deleting a key does not free quota. **Every new key** (public or
-  private) counts as one Data replies unit.
+  across pages (Free 100, Plus 10,000, Pro 100,000, Ultra 1,000,000). One value
+  is plan-tiered (Free 10KB · Plus 32KB · Pro 64KB · Ultra 128KB UTF-8 of
+  `JSON.stringify(value)`). Deleting a key does not free quota. **Every new
+  key** (public or private) counts as one Data replies unit.
 
 ### Two visibility layers (do not conflate)
 
